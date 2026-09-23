@@ -43,12 +43,12 @@ variable "cluster_public_access_cidrs" {
 variable "node_instance_types" {
   description = "EC2 instance types for the managed node group."
   type        = list(string)
-  default     = ["t3.medium"]
+  default     = ["t3.micro"]
 }
 
 variable "node_desired_size" {
   type    = number
-  default = 2
+  default = 1
 }
 
 variable "node_min_size" {
@@ -58,7 +58,7 @@ variable "node_min_size" {
 
 variable "node_max_size" {
   type    = number
-  default = 3
+  default = 1
 }
 
 variable "tags" {

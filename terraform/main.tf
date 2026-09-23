@@ -57,8 +57,8 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = true
 
   tags = merge(var.tags, {
-    Name                     = "${var.project_name}-public-${count.index + 1}"
-    "kubernetes.io/role/elb" = "1"
+    Name                                        = "${var.project_name}-public-${count.index + 1}"
+    "kubernetes.io/role/elb"                    = "1"
     "kubernetes.io/cluster/${var.cluster_name}" = "shared"
   })
 }
@@ -207,9 +207,9 @@ resource "aws_iam_role_policy_attachment" "ebs_csi" {
 }
 
 resource "aws_eks_addon" "ebs_csi" {
-  cluster_name             = aws_eks_cluster.main.name
-  addon_name               = "aws-ebs-csi-driver"
-  service_account_role_arn = aws_iam_role.ebs_csi.arn
+  cluster_name                = aws_eks_cluster.main.name
+  addon_name                  = "aws-ebs-csi-driver"
+  service_account_role_arn    = aws_iam_role.ebs_csi.arn
   resolve_conflicts_on_create = "OVERWRITE"
   resolve_conflicts_on_update = "PRESERVE"
 
