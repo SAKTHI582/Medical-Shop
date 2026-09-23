@@ -1,0 +1,3 @@
+# NOTE: The correct Terraform filename is terraform.tfvars (or terraform.tfvars.example).
+# This file is included only because the requested name was "terraform.tfwars".
+# Copy terraform.tfvars.example to terraform.tfvars and edit it before running Terraform.

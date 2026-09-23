@@ -1,0 +1,27 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: medical-shop-expiry-alert
+  namespace: medical-shop
+spec:
+  schedule: "0 2 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: expiry-alert
+              image: REPLACE_WITH_DOCKERHUB_USERNAME/medical-shop:latest
+              command:
+                - python
+                - -c
+                - "from app import app, check_expired_products; ctx=app.app_context(); ctx.push(); check_expired_products(); ctx.pop()"
+              envFrom:
+                - configMapRef:
+                    name: medical-shop-config
+                - secretRef:
+                    name: medical-shop-secret

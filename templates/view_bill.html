@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">Bill #{{ bill.bill_number }}</h4>
+                    <a href="{{ url_for('bills') }}" class="btn btn-light btn-sm">
+                        <i class="bi bi-arrow-left"></i> Back to Bills
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h6>Medical Shop</h6>
+                        <p>
+                            Sri Ganesh Medicals<br>
+                            2/362, Eppodhum Vendran Main Road<br>
+                            Pasuvanthanai - 628718<br>
+                            Phone: 9585776807
+                        </p>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <h6>Bill Date: {{ bill.bill_date.strftime('%d-%m-%Y') }}</h6>
+                        {% if bill.customer_name %}
+                        <h6>Customer Details</h6>
+                        <p>
+                            {{ bill.customer_name }}<br>
+                            {% if bill.customer_phone %}{{ bill.customer_phone }}<br>{% endif %}
+                        </p>
+                        {% else %}
+                        <p>No customer details available.</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h6>Prescription Notes:</h6>
+                    <p>{{ bill.prescription_notes if bill.prescription_notes else 'No notes provided.' }}</p>
+                </div>
+
+                <div class="table-responsive mb-4">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Medicine</th>
+                                <th>Price</th>
+                                <th>Qty</th>
+                                <th>Expiry Date</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in items %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td>{{ item.medicine_name }}</td>
+                                <td>₹{{ "%.2f"|format(item.price) }}</td>
+                                <td>{{ item.quantity }}</td>
+                                <td>
+                                    {% if item.expiry_date %}
+                                        {{ item.expiry_date.strftime('%d-%m-%Y') }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                                <td>₹{{ "%.2f"|format(item.amount) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="border p-3">
+                            <h6>Payment Method:</h6>
+                            <p>{{ bill.payment_method }}</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="bill-summary">
+                            <div class="d-flex justify-content-between">
+                                <span>Subtotal:</span>
+                                <span>₹{{ "%.2f"|format(bill.total_amount) }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Discount:</span>
+                                <span>₹{{ "%.2f"|format(bill.discount) }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Tax:</span>
+                                <span>₹{{ "%.2f"|format(bill.tax) }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between fw-bold fs-5 mt-2">
+                                <span>Grand Total:</span>
+                                <span>₹{{ "%.2f"|format(bill.grand_total) }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 text-center">
+                    <button class="btn btn-primary" onclick="window.print()">
+                        <i class="bi bi-printer"></i> Print Bill
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

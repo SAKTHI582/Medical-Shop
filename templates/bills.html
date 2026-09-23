@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block page_title %}Bills{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Bills</h1>
+    <a href="{{ url_for('billing') }}" class="btn btn-success">
+        <i class="bi bi-plus-circle"></i> New Bill
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Bill No.</th>
+                        <th>Date</th>
+                        <th>Customer</th>
+                        <th>Amount</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for bill in bills %}
+                    <tr>
+                        <td>{{ bill.bill_number }}</td>
+                        <td>{{ bill.bill_date.strftime('%d-%m-%Y') }}</td>
+                        <td>{{ bill.customer_name if bill.customer_name else 'N/A' }}</td>
+                        <td>₹{{ "%.2f"|format(bill.grand_total) }}</td>
+                        <td>
+                            <a href="{{ url_for('view_bill', bill_id=bill.id) }}" class="btn btn-sm btn-info">
+                                <i class="bi bi-eye"></i> View
+                            </a>
+                            <form action="{{ url_for('delete_bill', bill_id=bill.id) }}" method="post" style="display:inline;">
+                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this bill?')">
+                                    <i class="bi bi-trash"></i> Delete
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center">No bills found</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

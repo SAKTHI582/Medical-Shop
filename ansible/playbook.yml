@@ -1,0 +1,7 @@
+---
+- name: Prepare Linux host for Medical Shop DevOps operations
+  hosts: devops
+  become: true
+  gather_facts: true
+  roles:
+    - common

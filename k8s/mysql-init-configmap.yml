@@ -1,0 +1,64 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-init
+  namespace: medical-shop
+data:
+  01-schema.sql: |
+    CREATE DATABASE IF NOT EXISTS product_expiry_db;
+    USE product_expiry_db;
+
+    CREATE TABLE IF NOT EXISTS medicines (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(100) NOT NULL,
+      category VARCHAR(50) NOT NULL,
+      batch_number VARCHAR(50),
+      quantity INT NOT NULL,
+      price DECIMAL(10,2) NOT NULL,
+      expiry_date DATE NOT NULL,
+      date_added TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS customers (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(100) NOT NULL,
+      phone VARCHAR(20) NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_customer_name_phone (name, phone)
+    );
+
+    CREATE TABLE IF NOT EXISTS bills (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      customer_id INT,
+      bill_number VARCHAR(50) NOT NULL UNIQUE,
+      bill_date DATE NOT NULL,
+      total_amount DECIMAL(10,2) NOT NULL,
+      discount DECIMAL(10,2) DEFAULT 0,
+      tax DECIMAL(10,2) DEFAULT 0,
+      grand_total DECIMAL(10,2) NOT NULL,
+      payment_method VARCHAR(50),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (customer_id) REFERENCES customers(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS bill_items (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      bill_id INT NOT NULL,
+      medicine_id INT NOT NULL,
+      quantity INT NOT NULL,
+      price DECIMAL(10,2) NOT NULL,
+      amount DECIMAL(10,2) NOT NULL,
+      expiry_date DATE NOT NULL,
+      FOREIGN KEY (bill_id) REFERENCES bills(id),
+      FOREIGN KEY (medicine_id) REFERENCES medicines(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS admin (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      username VARCHAR(50) NOT NULL UNIQUE,
+      password VARCHAR(255) NOT NULL
+    );
+
+    INSERT INTO admin (username, password)
+    SELECT 'admin', 'admin123'
+    WHERE NOT EXISTS (SELECT 1 FROM admin WHERE username = 'admin');

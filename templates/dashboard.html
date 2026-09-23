@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <!-- Summary Cards -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Total Medicines
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ medicines_count }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-capsule fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Safe Medicines
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ safe_count }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-check-circle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Expiring Soon
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ warning_count }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-exclamation-triangle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-danger shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                            Expired Medicines
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ expired_count }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-x-circle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Recent Bills -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Recent Bills</h6>
+                <a href="{{ url_for('billing') }}" class="btn btn-sm btn-primary">New Bill</a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Bill No.</th>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for bill in recent_bills %}
+                            <tr>
+                                <td>{{ bill.bill_number }}</td>
+                                <td>{{ bill.bill_date.strftime('%d-%m-%Y') }}</td>
+                                <td>₹{{ "%.2f"|format(bill.grand_total) }}</td>
+                                <td>
+                                    <a href="{{ url_for('view_bill', bill_id=bill.id ) }}" class="btn btn-sm btn-info">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center">No recent bills</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Expiring Soon -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-warning">Medicines Expiring Soon</h6>
+                <a href="{{ url_for('medicines') }}" class="btn btn-sm btn-warning">View All</a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Medicine</th>
+                                <th>Expiry Date</th>
+                                <th>Stock</th>
+                                <th>Days Left</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for medicine in expiring_soon %}
+                            <tr>
+                                <td>{{ medicine.name }}</td>
+                                <td>{{ medicine.expiry_date.strftime('%d-%m-%Y') }}</td>
+                                <td>{{ medicine.quantity }}</td>
+                                <td>{{ (medicine.expiry_date - today).days }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center">No medicines expiring soon</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Quick Actions -->
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Quick Actions</h6>
+            </div>
+            <div class="card-body text-center">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('billing') }}" class="btn btn-primary btn-lg w-100 py-3">
+                            <i class="bi bi-cart-plus fs-1"></i><br>
+                            New Bill
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('medicines') }}" class="btn btn-success btn-lg w-100 py-3">
+                            <i class="bi bi-capsule fs-1"></i><br>
+                            Manage Medicines
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('add_medicine') }}" class="btn btn-info btn-lg w-100 py-3">
+                            <i class="bi bi-plus-circle fs-1"></i><br>
+                            Add Medicine
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('bills') }}" class="btn btn-warning btn-lg w-100 py-3">
+                            <i class="bi bi-receipt fs-1"></i><br>
+                            View Bills
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

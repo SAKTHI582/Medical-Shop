@@ -1,0 +1,171 @@
+name: Medical Shop CI-CD
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/medical-shop
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate Python, Maven and Kubernetes manifests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install native build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config default-libmysqlclient-dev libcairo2 libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf-2.0-0 libffi-dev shared-mime-info
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Python compile check
+        run: python -m compileall -q .
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Maven validate/package
+        run: mvn -B package
+
+      - name: Validate Kubernetes YAML
+        run: |
+          python -m pip install pyyaml
+          python - <<'PY'
+          import glob
+          import yaml
+          for path in glob.glob('k8s/*.yml') + glob.glob('monitering/**/*.yml', recursive=True):
+              with open(path, encoding='utf-8') as f:
+                  list(yaml.safe_load_all(f))
+              print('OK:', path)
+          PY
+
+  docker:
+    name: Build and push Docker image
+    needs: validate
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy to EKS
+    needs: docker
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Configure kubectl for EKS
+        run: aws eks update-kubeconfig --region "${AWS_REGION}" --name "${EKS_CLUSTER_NAME}"
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          EKS_CLUSTER_NAME: ${{ secrets.EKS_CLUSTER_NAME }}
+
+      - name: Create namespace
+        run: kubectl apply -f k8s/namespace.yml
+
+      - name: Create/update secrets
+        run: |
+          kubectl -n medical-shop create secret generic medical-shop-secret --dry-run=client -o yaml \
+            --from-literal=MYSQL_PASSWORD='${{ secrets.MYSQL_PASSWORD }}' \
+            --from-literal=SECRET_KEY='${{ secrets.SECRET_KEY }}' \
+            --from-literal=MAIL_USERNAME='${{ secrets.MAIL_USERNAME }}' \
+            --from-literal=MAIL_PASSWORD='${{ secrets.MAIL_PASSWORD }}' \
+            --from-literal=MAIL_RECIPIENTS='${{ secrets.MAIL_RECIPIENTS }}' \
+            | kubectl apply -f -
+          kubectl -n medical-shop create secret generic mysql-secret --dry-run=client -o yaml \
+            --from-literal=MYSQL_ROOT_PASSWORD='${{ secrets.MYSQL_PASSWORD }}' \
+            | kubectl apply -f -
+
+      - name: Create/update Grafana secret
+        run: |
+          kubectl -n medical-shop create secret generic grafana-secret --dry-run=client -o yaml \
+            --from-literal=admin-password='${{ secrets.GRAFANA_ADMIN_PASSWORD }}' \
+            | kubectl apply -f -
+
+      - name: Apply manifests
+        run: |
+          kubectl apply -f k8s/configmap.yml
+          kubectl apply -f k8s/mysql-init-configmap.yml
+          kubectl apply -f k8s/mysql.yml
+          kubectl apply -f k8s/service.yml
+          kubectl apply -f k8s/deployment.yml
+          kubectl apply -f k8s/ingress.yml
+          kubectl apply -f k8s/expiry-cronjob.yml
+          kubectl apply -f monitering/prometheus.yml
+          kubectl apply -f monitering/prometheus-rbac.yml
+          kubectl apply -f monitering/prometheus-deployment.yml
+          kubectl apply -f monitering/prometheus-service.yml
+          kubectl apply -f monitering/grafana/configmap.yml
+          kubectl apply -f monitering/grafana/deployment.yml
+          kubectl apply -f monitering/grafana/service.yml
+          kubectl apply -f monitering/grafana/ingress.yml
+
+      - name: Update application image
+        run: |
+          IMAGE_TAG="${IMAGE_NAME}:sha-${GITHUB_SHA::7}"
+          kubectl -n medical-shop set image deployment/medical-shop-app medical-shop="$IMAGE_TAG"
+          kubectl -n medical-shop set image cronjob/medical-shop-expiry-alert expiry-alert="$IMAGE_TAG"
+          kubectl -n medical-shop rollout status deployment/medical-shop-app --timeout=180s
+        env:
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+
+      - name: Show deployment
+        run: kubectl -n medical-shop get pods,svc,ingress

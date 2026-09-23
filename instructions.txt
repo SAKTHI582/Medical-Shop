@@ -1,0 +1,24 @@
+Install all 
+pip install mysql-connector-python
+pip install mysql-connector-python==8.0.33
+pip install Flask-MySQLdb
+pip install Flask-Mail
+pip install Flask-WeasyPrint
+pip install apscheduler
+pip install apscheduler pytz
+
+run command:
+ python config.py
+ python database.py
+ python app.py
+
+
+install gtk
+https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer/releases
+
+
+enter your email in app.py code
+go to your email manage settings
+remove 2step verification 
+add applock 
+enter the given passcode to app.py

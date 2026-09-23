@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.sakthiganesh</groupId>
+  <artifactId>medical-shop-devops</artifactId>
+  <version>1.0.0</version>
+  <packaging>pom</packaging>
+  <name>Medical Shop DevOps Packaging</name>
+  <description>Maven wrapper used to validate/package the Python Flask DevOps project.</description>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-antrun-plugin</artifactId>
+        <version>3.1.0</version>
+        <executions>
+          <execution>
+            <id>package-devops-files</id>
+            <phase>package</phase>
+            <configuration>
+              <target>
+                <mkdir dir="${project.build.directory}/devops-package"/>
+                <copy todir="${project.build.directory}/devops-package">
+                  <fileset dir="${project.basedir}">
+                    <exclude name="target/**"/>
+                    <exclude name=".git/**"/>
+                    <exclude name=".venv/**"/>
+                    <exclude name="venv/**"/>
+                    <exclude name="__pycache__/**"/>
+                  </fileset>
+                </copy>
+              </target>
+            </configuration>
+            <goals><goal>run</goal></goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

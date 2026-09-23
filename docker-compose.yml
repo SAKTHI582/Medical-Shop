@@ -1,0 +1,36 @@
+services:
+  mysql:
+    image: mysql:8.0
+    restart: on-failure
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-Sakthi@582}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  medical-shop:
+    build: .
+    restart: on-failure
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: "3306"
+      MYSQL_USER: root
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-Sakthi@582}
+      MYSQL_DB: product_expiry_db
+      SECRET_KEY: ${SECRET_KEY:-Sakthi@582}
+      MAIL_USERNAME: ${MAIL_USERNAME:-s62552342@gmail.com}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-qfoyzbkhgjbtqgnm}
+      MAIL_RECIPIENTS: ${MAIL_RECIPIENTS:-s62552342@gmail.com}
+      GUNICORN_WORKERS: "2"
+    ports:
+      - "5000:5000"
+
+volumes:
+  mysql_data:
