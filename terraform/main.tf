@@ -10,8 +10,6 @@ terraform {
 
 provider "aws" {
   region = var.aws_region
-  access_key = "AKIAQEXZRB5URDKPCLEU"
-  secret_key = "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"
 }
 
 data "aws_availability_zones" "available" {
