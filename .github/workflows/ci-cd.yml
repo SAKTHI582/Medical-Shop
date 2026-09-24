@@ -137,8 +137,10 @@ jobs:
       - name: Create/update Grafana secret
         run: |
           kubectl -n medical-shop create secret generic grafana-secret --dry-run=client -o yaml \
-            --from-literal=admin-password='${{ secrets.GRAFANA_ADMIN_PASSWORD }}' \
+            --from-literal=admin-password='Sakthi@582' \
             | kubectl apply -f -
+        env:
+          GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
 
       - name: Apply manifests
         run: |
