@@ -145,7 +145,7 @@ resource "aws_eks_node_group" "main" {
   scaling_config {
     desired_size = var.node_desired_size
     min_size     = var.node_min_size
-    max_size     = var.node_max_size0
+    max_size     = var.node_max_size
   }
 
   update_config {
@@ -207,9 +207,13 @@ resource "aws_iam_role_policy_attachment" "ebs_csi" {
 }
 
 resource "aws_eks_addon" "ebs_csi" {
-  cluster_name                = aws_eks_cluster.main.name
-  addon_name                  = "aws-ebs-csi-driver"
-  service_account_role_arn    = aws_iam_role.ebs_csi.arn
+  cluster_name = aws_eks_cluster.main.name
+
+  addon_name    = "aws-ebs-csi-driver"
+  addon_version = "v1.66.0-eksbuild.1"
+
+  service_account_role_arn = aws_iam_role.ebs_csi.arn
+
   resolve_conflicts_on_create = "OVERWRITE"
   resolve_conflicts_on_update = "PRESERVE"
 
