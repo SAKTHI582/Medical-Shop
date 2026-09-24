@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: medical-shop
-          image: REPLACE_WITH_DOCKERHUB_USERNAME/medical-shop:latest
+          image: sakthiganesh143/medical-shop:latest
           imagePullPolicy: Always
           ports:
             - name: http

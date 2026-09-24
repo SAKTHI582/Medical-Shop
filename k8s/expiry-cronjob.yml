@@ -15,7 +15,7 @@ spec:
           restartPolicy: OnFailure
           containers:
             - name: expiry-alert
-              image: REPLACE_WITH_DOCKERHUB_USERNAME/medical-shop:latest
+              image: sakthiganesh143/medical-shop:latest
               command:
                 - python
                 - -c
