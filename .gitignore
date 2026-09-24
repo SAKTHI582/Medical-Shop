@@ -37,6 +37,7 @@ crash.*.log
 *.tfvars
 !terraform/terraform.tfvars.example
 !terraform/terraform.tfvars
+terraform/*.tfvars
 
 # Kubernetes secrets
 k8s/secret.yml
