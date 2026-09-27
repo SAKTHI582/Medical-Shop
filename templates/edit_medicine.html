@@ -1,45 +1,313 @@
 {% extends "base.html" %}
 
 {% block content %}
+
 <div class="row justify-content-center">
+
     <div class="col-md-8">
-        <div class="card">
+
+        <div class="card shadow-sm">
+
+            <!-- Header -->
             <div class="card-header bg-primary text-white">
-                <h4 class="mb-0">Edit Medicine</h4>
+
+                <h4 class="mb-0">
+                    <i class="bi bi-pencil-square"></i>
+                    Edit Medicine
+                </h4>
+
             </div>
+
+
+            <!-- Body -->
             <div class="card-body">
-                <form method="POST" action="{{ url_for('edit_medicine', id=medicine.id) }}">
+
+                <form
+                    method="POST"
+                    action="{{ url_for('edit_medicine', id=medicine.id) }}"
+                >
+
+                    <!-- Medicine Name -->
                     <div class="mb-3">
-                        <label for="name" class="form-label">Medicine Name</label>
-                        <input type="text" class="form-control" id="name" name="name" value="{{ medicine.name }}" required>
+
+                        <label
+                            for="name"
+                            class="form-label"
+                        >
+                            Medicine Name
+                        </label>
+
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="name"
+                            name="name"
+                            value="{{ medicine.name }}"
+                            placeholder="Enter medicine name"
+                            required
+                        >
+
                     </div>
+
+
+                    <!-- Category -->
                     <div class="mb-3">
-                        <label for="category" class="form-label">Category</label>
-                        <input type="text" class="form-control" id="category" name="category" value="{{ medicine.category }}" required>
+
+                        <label
+                            for="category"
+                            class="form-label"
+                        >
+                            Category
+                        </label>
+
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="category"
+                            name="category"
+                            value="{{ medicine.category }}"
+                            placeholder="Example: Tablet, Syrup, Capsule"
+                            required
+                        >
+
                     </div>
+
+
+                    <!-- Batch Number -->
                     <div class="mb-3">
-                        <label for="batch_number" class="form-label">Batch Number</label>
-                        <input type="text" class="form-control" id="batch_number" name="batch_number" value="{{ medicine.batch_number }}" required>
+
+                        <label
+                            for="batch_number"
+                            class="form-label"
+                        >
+                            Batch Number
+                        </label>
+
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="batch_number"
+                            name="batch_number"
+                            value="{{ medicine.batch_number }}"
+                            placeholder="Enter batch number"
+                            required
+                        >
+
                     </div>
+
+
+                    <!-- Quantity and Price -->
                     <div class="row">
+
+                        <!-- Quantity -->
                         <div class="col-md-6 mb-3">
-                            <label for="quantity" class="form-label">Quantity</label>
-                            <input type="number" class="form-control" id="quantity" name="quantity" min="1" value="{{ medicine.quantity }}" required>
+
+                            <label
+                                for="quantity"
+                                class="form-label"
+                            >
+                                Quantity
+                            </label>
+
+                            <input
+                                type="number"
+                                class="form-control"
+                                id="quantity"
+                                name="quantity"
+                                min="1"
+                                value="{{ medicine.quantity }}"
+                                required
+                            >
+
                         </div>
+
+
+                        <!-- Price -->
                         <div class="col-md-6 mb-3">
-                            <label for="price" class="form-label">Price (₹)</label>
-                            <input type="number" step="0.01" class="form-control" id="price" name="price" min="0" value="{{ medicine.price }}" required>
+
+                            <label
+                                for="price"
+                                class="form-label"
+                            >
+                                Price (₹)
+                            </label>
+
+                            <input
+                                type="number"
+                                step="0.01"
+                                class="form-control"
+                                id="price"
+                                name="price"
+                                min="0"
+                                value="{{ medicine.price }}"
+                                required
+                            >
+
                         </div>
+
                     </div>
-                    <div class="mb-3">
-                        <label for="expiry_date" class="form-label">Expiry Date</label>
-                        <input type="date" class="form-control" id="expiry_date" name="expiry_date" value="{{ medicine.expiry_date.strftime('%Y-%m-%d') }}" required>
+
+
+                    <!-- MFG Date and Expiry Date -->
+                    <div class="row">
+
+                        <!-- Manufacturing Date -->
+                        <div class="col-md-6 mb-3">
+
+                            <label
+                                for="mfg_date"
+                                class="form-label"
+                            >
+                                Manufacturing Date
+                            </label>
+
+                            <input
+                                type="date"
+                                class="form-control"
+                                id="mfg_date"
+                                name="mfg_date"
+
+                                {% if medicine.mfg_date %}
+                                    value="{{ medicine.mfg_date.strftime('%Y-%m-%d') }}"
+                                {% endif %}
+
+                                required
+                            >
+
+                        </div>
+
+
+                        <!-- Expiry Date -->
+                        <div class="col-md-6 mb-3">
+
+                            <label
+                                for="expiry_date"
+                                class="form-label"
+                            >
+                                Expiry Date
+                            </label>
+
+                            <input
+                                type="date"
+                                class="form-control"
+                                id="expiry_date"
+                                name="expiry_date"
+
+                                {% if medicine.expiry_date %}
+                                    value="{{ medicine.expiry_date.strftime('%Y-%m-%d') }}"
+                                {% endif %}
+
+                                required
+                            >
+
+                        </div>
+
                     </div>
-                    <button type="submit" class="btn btn-primary">Update Medicine</button>
-                    <a href="{{ url_for('medicines') }}" class="btn btn-secondary">Cancel</a>
+
+
+                    <!-- Buttons -->
+                    <div class="mt-3">
+
+                        <button
+                            type="submit"
+                            class="btn btn-primary"
+                        >
+
+                            <i class="bi bi-check-circle"></i>
+                            Update Medicine
+
+                        </button>
+
+
+                        <a
+                            href="{{ url_for('medicines') }}"
+                            class="btn btn-secondary"
+                        >
+
+                            <i class="bi bi-x-circle"></i>
+                            Cancel
+
+                        </a>
+
+                    </div>
+
                 </form>
+
             </div>
+
         </div>
+
     </div>
+
 </div>
+
+
+<!-- ==========================================================
+     DATE VALIDATION
+     ========================================================== -->
+
+<script>
+
+document.addEventListener(
+    'DOMContentLoaded',
+    function () {
+
+        const mfgDate =
+            document.getElementById('mfg_date');
+
+        const expiryDate =
+            document.getElementById('expiry_date');
+
+
+        function validateDates() {
+
+            if (
+                mfgDate.value &&
+                expiryDate.value
+            ) {
+
+                if (
+                    expiryDate.value <=
+                    mfgDate.value
+                ) {
+
+                    expiryDate.setCustomValidity(
+                        'Expiry date must be after manufacturing date.'
+                    );
+
+                } else {
+
+                    expiryDate.setCustomValidity('');
+
+                }
+
+            } else {
+
+                expiryDate.setCustomValidity('');
+
+            }
+
+        }
+
+
+        mfgDate.addEventListener(
+            'change',
+            validateDates
+        );
+
+
+        expiryDate.addEventListener(
+            'change',
+            validateDates
+        );
+
+
+        // Validate existing dates on page load
+        validateDates();
+
+    }
+);
+
+</script>
+
 {% endblock %}

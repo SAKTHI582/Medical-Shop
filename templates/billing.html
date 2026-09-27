@@ -1,333 +1,803 @@
 {% extends "base.html" %}
 
-{% block page_title %}Create New Bill{% endblock %}
+{% block title %}Create Bill - Medical Shop{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-12">
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h4 class="mb-0">Create New Bill</h4>
+
+<style>
+    .billing-page {
+        padding: 20px 0;
+    }
+
+    .billing-card {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        margin-bottom: 20px;
+    }
+
+    .billing-title {
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
+
+    .billing-subtitle {
+        color: #6c757d;
+        margin-bottom: 0;
+    }
+
+    /* Medicine list */
+    .medicine-list {
+        max-height: 550px;
+        overflow-y: auto;
+        padding-right: 5px;
+    }
+
+    .medicine-item {
+        background: #ffffff;
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 12px;
+        transition: 0.2s ease;
+    }
+
+    .medicine-item:hover {
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+    }
+
+    /* EXPIRED MEDICINE */
+    .medicine-item.expired-medicine {
+        background: #fff1f2;
+        border: 2px solid #dc3545;
+    }
+
+    .medicine-item.expired-medicine:hover {
+        box-shadow: 0 3px 10px rgba(220, 53, 69, 0.15);
+    }
+
+    .medicine-name {
+        font-size: 17px;
+        font-weight: 700;
+        color: #212529;
+        margin-bottom: 5px;
+    }
+
+    .medicine-info {
+        font-size: 13px;
+        color: #6c757d;
+        margin-bottom: 2px;
+    }
+
+    .expired-label {
+        display: inline-block;
+        margin-top: 7px;
+        padding: 4px 9px;
+        border-radius: 5px;
+        background: #dc3545;
+        color: #ffffff;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .expired-button {
+        cursor: not-allowed !important;
+        opacity: 1 !important;
+    }
+
+    .out-of-stock-button {
+        cursor: not-allowed !important;
+    }
+
+    .add-btn {
+        min-width: 120px;
+    }
+
+    /* Search */
+    .search-box {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: #ffffff;
+        padding-bottom: 10px;
+    }
+
+    /* Cart */
+    .cart-table {
+        font-size: 14px;
+    }
+
+    .cart-table th {
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+
+    .cart-table td {
+        vertical-align: middle;
+    }
+
+    .empty-cart {
+        text-align: center;
+        color: #6c757d;
+        padding: 30px !important;
+    }
+
+    .quantity-control {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .quantity-control button {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+    }
+
+    .quantity-input {
+        width: 55px;
+        text-align: center;
+    }
+
+    /* Summary */
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 7px 0;
+    }
+
+    .grand-total {
+        font-size: 22px;
+        font-weight: 700;
+    }
+
+    /* Mobile */
+    @media (max-width: 768px) {
+        .medicine-list {
+            max-height: 450px;
+        }
+
+        .cart-table {
+            font-size: 12px;
+        }
+
+        .grand-total {
+            font-size: 19px;
+        }
+    }
+</style>
+
+
+<div class="container-fluid billing-page">
+
+    <!-- =====================================================
+         PAGE HEADER
+         ===================================================== -->
+
+    <div class="billing-card">
+
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+
+            <div>
+                <h2 class="billing-title">
+                    Medical Shop Billing
+                </h2>
+
+                <p class="billing-subtitle">
+                    Create a new bill
+                </p>
             </div>
-            <div class="card-body">
-                <form id="billForm" method="POST" action="{{ url_for('billing') }}">
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <h5>Customer Details</h5>
-                            <div class="mb-3">
-                                <label for="customer_name" class="form-label">Customer Name</label>
-                                <input type="text" class="form-control" id="customer_name" name="customer_name">
-                            </div>
-                            <div class="mb-3">
-                                <label for="customer_phone" class="form-label">Phone Number</label>
-                                <input type="text" class="form-control" id="customer_phone" name="customer_phone">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <h5>Payment Details</h5>
-                            <div class="mb-3">
-                                <label for="payment_method" class="form-label">Payment Method</label>
-                                <select class="form-select" id="payment_method" name="payment_method" required>
-                                    <option value="Cash">Cash</option>
-                                    <option value="Card">Card</option>
-                                    <option value="UPI">UPI</option>
-                                    <option value="Net Banking">Net Banking</option>
-                                </select>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <label for="discount" class="form-label">Discount (₹)</label>
-                                    <input type="number" class="form-control" id="discount" name="discount" value="0" min="0">
-                                </div>
-                                <div class="col-md-6">
-                                    <label for="tax" class="form-label">Tax (₹)</label>
-                                    <input type="number" class="form-control" id="tax" name="tax" value="0" min="0">
-                                </div>
-                            </div>
-                        </div>
+
+            <a
+                href="{{ url_for('dashboard') }}"
+                class="btn btn-secondary"
+            >
+                Dashboard
+            </a>
+
+        </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         BILLING FORM
+         ===================================================== -->
+
+    <form
+        method="POST"
+        action="{{ url_for('billing') }}"
+        id="billingForm"
+    >
+
+        <div class="row g-4">
+
+            <!-- =================================================
+                 LEFT SIDE
+                 ================================================= -->
+
+            <div class="col-lg-7">
+
+                <!-- CUSTOMER DETAILS -->
+
+                <div class="billing-card">
+
+                    <h5 class="mb-3">
+                        Customer Details
+                    </h5>
+
+                    <div class="alert alert-info py-2">
+                        Customer details are optional.
+                        Leave both fields empty for a walk-in customer.
                     </div>
 
                     <div class="row">
-    <div class="col-md-5">
-        <div class="card">
-            <div class="card-header bg-secondary text-white">
-                <h5 class="mb-0">Medicines</h5>
-            </div>
-            <div class="card-body">
-                <div class="mb-3">
-                    <input type="text" class="form-control" id="medicineSearch" placeholder="Search medicines...">
+
+                        <div class="col-md-6 mb-3">
+
+                            <label
+                                for="customer_name"
+                                class="form-label"
+                            >
+                                Customer Name
+                            </label>
+
+                            <input
+                                type="text"
+                                class="form-control"
+                                id="customer_name"
+                                name="customer_name"
+                                placeholder="Enter customer name"
+                            >
+
+                        </div>
+
+
+                        <div class="col-md-6 mb-3">
+
+                            <label
+                                for="customer_phone"
+                                class="form-label"
+                            >
+                                Customer Phone
+                            </label>
+
+                            <input
+                                type="text"
+                                class="form-control"
+                                id="customer_phone"
+                                name="customer_phone"
+                                placeholder="Enter phone number"
+                            >
+
+                        </div>
+
+                    </div>
+
                 </div>
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Price</th>
-                                <th>Stock</th>
-                                <th>Expiry Date</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="medicineList">
+
+
+                <!-- =================================================
+                     MEDICINE SELECTION
+                     ================================================= -->
+
+                <div class="billing-card">
+
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+
+                        <h5 class="mb-0">
+                            Select Medicines
+                        </h5>
+
+                        <span class="badge bg-danger">
+                            Expired medicines cannot be billed
+                        </span>
+
+                    </div>
+
+
+                    <!-- SEARCH -->
+
+                    <div class="search-box">
+
+                        <input
+                            type="text"
+                            id="medicineSearch"
+                            class="form-control"
+                            placeholder="Search medicine by name..."
+                            autocomplete="off"
+                        >
+
+                    </div>
+
+
+                    <!-- MEDICINE LIST -->
+
+                    <div
+                        class="medicine-list mt-3"
+                        id="medicineList"
+                    >
+
+                        {% if medicines %}
+
                             {% for medicine in medicines %}
-                            <tr>
-                                <td>{{ medicine.name }}</td>
-                                <td>₹{{ "%.2f"|format(medicine.price) }}</td>
-                                <td>{{ medicine.quantity }}</td>
-                                <td>{{ medicine.expiry_date.strftime('%d-%m-%Y') }}</td>
-                                <td>
-                                    {% if medicine.expiry_date >= today %}
-                                        <button type="button" class="btn btn-sm btn-primary add-to-cart" 
-                                                data-id="{{ medicine.id }}" 
-                                                data-name="{{ medicine.name }}" 
-                                                data-price="{{ medicine.price }}"
-                                                data-stock="{{ medicine.quantity }}"
-                                                data-expiry="{{ medicine.expiry_date }}">
-                                            <i class="bi bi-plus"></i> Add
-                                        </button>
-                                    {% else %}
-                                        <button type="button" class="btn btn-sm btn-danger" disabled>
-                                            Expired
-                                        </button>
-                                    {% endif %}
-                                </td>
-                            </tr>
+
+                                {% set is_expired =
+                                    medicine.expiry_date
+                                    and medicine.expiry_date <= today
+                                %}
+
+
+                                <div
+                                    class="medicine-item {% if is_expired %}expired-medicine{% endif %}"
+                                    data-name="{{ medicine.name|lower }}"
+                                >
+
+                                    <div class="row align-items-center">
+
+                                        <!-- MEDICINE INFORMATION -->
+
+                                        <div class="col-md-8">
+
+                                            <div class="medicine-name">
+                                                {{ medicine.name }}
+                                            </div>
+
+
+                                            <div class="medicine-info">
+                                                <strong>Category:</strong>
+                                                {{ medicine.category or 'N/A' }}
+                                            </div>
+
+
+                                            <div class="medicine-info">
+                                                <strong>Batch:</strong>
+                                                {{ medicine.batch_number or 'N/A' }}
+                                            </div>
+
+
+                                            <div class="medicine-info">
+                                                <strong>Price:</strong>
+                                                ₹{{ "%.2f"|format(medicine.price|float) }}
+                                            </div>
+
+
+                                            <div class="medicine-info">
+                                                <strong>Stock:</strong>
+                                                {{ medicine.quantity }}
+                                            </div>
+
+
+                                            <div class="medicine-info">
+                                                <strong>MFG:</strong>
+
+                                                {% if medicine.mfg_date %}
+
+                                                    {{ medicine.mfg_date.strftime('%d-%m-%Y') }}
+
+                                                {% else %}
+
+                                                    N/A
+
+                                                {% endif %}
+
+                                            </div>
+
+
+                                            <div class="medicine-info">
+
+                                                <strong>EXP:</strong>
+
+                                                {% if medicine.expiry_date %}
+
+                                                    {{ medicine.expiry_date.strftime('%d-%m-%Y') }}
+
+                                                {% else %}
+
+                                                    N/A
+
+                                                {% endif %}
+
+                                            </div>
+
+
+                                            {% if is_expired %}
+
+                                                <span class="expired-label">
+                                                    ⚠ EXPIRED MEDICINE
+                                                </span>
+
+                                            {% endif %}
+
+                                        </div>
+
+
+                                        <!-- ACTION BUTTON -->
+
+                                        <div class="col-md-4 text-md-end mt-3 mt-md-0">
+
+                                            {% if is_expired %}
+
+                                                <!--
+                                                    EXPIRED:
+                                                    Cannot click
+                                                    Cannot add to cart
+                                                -->
+
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-danger add-btn expired-button"
+                                                    disabled
+                                                >
+                                                    Expired
+                                                </button>
+
+
+                                            {% elif medicine.quantity <= 0 %}
+
+                                                <!-- OUT OF STOCK -->
+
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-secondary add-btn out-of-stock-button"
+                                                    disabled
+                                                >
+                                                    Out of Stock
+                                                </button>
+
+
+                                            {% else %}
+
+                                                <!-- AVAILABLE MEDICINE -->
+
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-primary add-to-cart add-btn"
+
+                                                    data-id="{{ medicine.id }}"
+
+                                                    data-name="{{ medicine.name }}"
+
+                                                    data-price="{{ medicine.price }}"
+
+                                                    data-stock="{{ medicine.quantity }}"
+
+                                                    data-mfg="{% if medicine.mfg_date %}{{ medicine.mfg_date.strftime('%d-%m-%Y') }}{% else %}N/A{% endif %}"
+
+                                                    data-expiry="{% if medicine.expiry_date %}{{ medicine.expiry_date.strftime('%d-%m-%Y') }}{% else %}N/A{% endif %}"
+                                                >
+                                                    Add to Cart
+                                                </button>
+
+                                            {% endif %}
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
                             {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-7">
-        <div class="card">
-            <div class="card-header bg-success text-white">
-                <h5 class="mb-0">Bill Items</h5>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Medicine</th>
-                                <th>Price</th>
-                                <th>Qty</th>
-                                <th>Expiry Date</th>
-                                <th>Total</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="cartItems">
-                            <!-- Cart items will be added here dynamically -->
-                        </tbody>
-                    </table>
-                </div>
-                <div class="row mt-3">
-                    <div class="col-md-6">
-                        <div class="input-group mb-3">
-                            <input type="text" class="form-control" id="prescription" placeholder="Prescription notes...">
-                            <button class="btn btn-outline-secondary" type="button">Add Note</button>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="bill-summary">
-                            <div class="d-flex justify-content-between">
-                                <span>Subtotal:</span>
-                                <span id="subtotal">₹0.00</span>
-                            </div>
-                            <div class="d-flex justify-content-between">
-                                <span>Discount:</span>
-                                <span id="displayDiscount">₹0.00</span>
-                            </div>
-                            <div class="d-flex justify-content-between">
-                                <span>Tax (18%):</span>
-                                <span id="displayTax">₹0.00</span>
-                            </div>
-                            <div class="d-flex justify-content-between fw-bold">
-                                <span>Grand Total:</span>
-                                <span id="grandTotal">₹0.00</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-<input type="hidden" id="cart_items" name="cart_items">
-<input type="hidden" id="prescription_notes" name="prescription_notes"> <!-- Add this line -->
-<div class="mt-4 text-end">
-    <button type="button" class="btn btn-secondary" id="clearCart">Clear Cart</button>
-    <button type="submit" class="btn btn-primary" id="submitBill">Create Bill</button>
-</div>
 
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
 
-{% block scripts %}
-<script>
-$(document).ready(function() {
-    let cart = [];
-    
-    // Function to update the cart display
-    function updateCart() {
-        $('#cartItems').empty();
-        let subtotal = 0;
-        
-        // Update each item in the cart
-        cart.forEach((item, index) => {
-            subtotal += item.total;
-            $('#cartItems').append(`
-                <tr>
-                    <td>${item.name}</td>
-                    <td>₹${item.price.toFixed(2)}</td>
-                    <td>
-                        <div class="input-group input-group-sm" style="width: 100px;">
-                            <button class="btn btn-outline-secondary minus-item" type="button" data-index="${index}">-</button>
-                            <input type="number" class="form-control text-center quantity-input" 
-                                   value="${item.quantity}" min="1" max="${item.stock}" data-index="${index}">
-                            <button class="btn btn-outline-secondary plus-item" type="button" data-index="${index}">+</button>
-                        </div>
-                    </td>
-                    <td>${item.expiry_date}</td>
-                    <td>₹${item.total.toFixed(2)}</td>
-                    <td>
-                        <button class="btn btn-sm btn-danger remove-item" data-index="${index}">
-                            <i class="bi bi-trash"></i>
+                        {% else %}
+
+                            <div class="alert alert-warning">
+
+                                No medicines available for billing.
+
+                            </div>
+
+                        {% endif %}
+
+                    </div>
+
+
+                    <!-- NO SEARCH RESULT -->
+
+                    <div
+                        id="noSearchResults"
+                        class="alert alert-warning mt-3"
+                        style="display: none;"
+                    >
+                        No medicine found.
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- =================================================
+                 RIGHT SIDE
+                 ================================================= -->
+
+            <div class="col-lg-5">
+
+
+                <!-- =================================================
+                     CART
+                     ================================================= -->
+
+                <div class="billing-card">
+
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+
+                        <h5 class="mb-0">
+                            Shopping Cart
+                        </h5>
+
+                        <button
+                            type="button"
+                            class="btn btn-outline-danger btn-sm"
+                            id="clearCart"
+                        >
+                            Clear Cart
                         </button>
-                    </td>
-                </tr>
-            `);
-        });
-        
-        // Calculate totals
-        const discount = parseFloat($('#discount').val()) || 0;
-        const tax = parseFloat($('#tax').val()) || 0;
-        const grandTotal = subtotal - discount + tax;
-        
-        // Update display
-        $('#subtotal').text(`₹${subtotal.toFixed(2)}`);
-        $('#displayDiscount').text(`₹${discount.toFixed(2)}`);
-        $('#displayTax').text(`₹${tax.toFixed(2)}`);
-        $('#grandTotal').text(`₹${grandTotal.toFixed(2)}`);
-        
-        // Update hidden input with cart data
-        $('#cart_items').val(JSON.stringify(cart));
-    }
-    
-    // Add to cart button click handler
-    $(document).on('click', '.add-to-cart', function() {
-        const medicineId = $(this).data('id');
-        const medicineName = $(this).data('name');
-        const medicinePrice = parseFloat($(this).data('price'));
-        const medicineStock = parseInt($(this).data('stock'));
-        const medicineExpiry = $(this).data('expiry');  // Capture expiry date
-        
-        // Check if item already exists in cart
-        const existingItem = cart.find(item => item.id === medicineId);
-        
-        if (existingItem) {
-            // If item exists, check stock before increasing quantity
-            if (existingItem.quantity < medicineStock) {
-                existingItem.quantity += 1;
-                existingItem.total = existingItem.quantity * existingItem.price;
-            } else {
-                alert('Cannot add more than available stock!');
-                return;
-            }
-        } else {
-            // If item doesn't exist, add it to cart
-            if (medicineStock > 0) {
-                cart.push({
-                    id: medicineId,
-                    name: medicineName,
-                    price: medicinePrice,
-                    quantity: 1,
-                    total: medicinePrice,
-                    stock: medicineStock,
-                    expiry_date: medicineExpiry  // Include expiry date
-                });
-            } else {
-                alert('This medicine is out of stock!');
-                return;
-            }
-        }
-        
-        updateCart();
-    });
-    
-    // Minus button click handler
-    $(document).on('click', '.minus-item', function() {
-        const index = $(this).data('index');
-        if (cart[index].quantity > 1) {
-            cart[index].quantity -= 1;
-            cart[index].total = cart[index].price * cart[index].quantity;
-            updateCart();
-        }
-    });
-    
-    // Plus button click handler
-    $(document).on('click', '.plus-item', function() {
-        const index = $(this).data('index');
-        if (cart[index].quantity < cart[index].stock) {
-            cart[index].quantity += 1;
-            cart[index].total = cart[index].price * cart[index].quantity;
-            updateCart();
-        } else {
-            alert('Cannot add more than available stock!');
-        }
-    });
-    
-    // Quantity input change handler
-    $(document).on('change', '.quantity-input', function() {
-        const index = $(this).data('index');
-        const newQuantity = parseInt($(this).val());
-        
-        if (newQuantity > 0 && newQuantity <= cart[index].stock) {
-            cart[index].quantity = newQuantity;
-            cart[index].total = cart[index].price * newQuantity;
-            updateCart();
-        } else {
-            $(this).val(cart[index].quantity); // Revert to previous value
-            alert('Quantity must be between 1 and available stock!');
-        }
-    });
-    
-    // Remove item button click handler
-    $(document).on('click', '.remove-item', function() {
-        const index = $(this).data('index');
-        cart.splice(index, 1);
-        updateCart();
-    });
-    
-    // Clear cart button click handler
-    $('#clearCart').click(function() {
-        if (confirm('Are you sure you want to clear the cart?')) {
-            cart = [];
-            updateCart();
-        }
-    });
-    
-    // Update totals when discount or tax changes
-    $('#discount, #tax').on('input', function() {
-        updateCart();
-    });
-    
-    // Form submission handler
-    $('#billForm').on('submit', function(e) {
-    // Capture prescription notes
-    const prescriptionNotes = $('#prescription').val();
-    $('#prescription_notes').val(prescriptionNotes); // Set the hidden input value
 
-    if (cart.length === 0) {
-        e.preventDefault();
-        alert('Please add at least one medicine to the bill!');
-    }
-   });
-});
-</script>
+                    </div>
+
+
+                    <div class="table-responsive">
+
+                        <table class="table table-bordered cart-table">
+
+                            <thead class="table-light">
+
+                                <tr>
+
+                                    <th>Medicine</th>
+
+                                    <th>Price</th>
+
+                                    <th>Qty</th>
+
+                                    <th>MFG</th>
+
+                                    <th>EXP</th>
+
+                                    <th>Total</th>
+
+                                    <th>Action</th>
+
+                                </tr>
+
+                            </thead>
+
+
+                            <tbody id="cartItems">
+
+                                <tr>
+
+                                    <td
+                                        colspan="7"
+                                        class="empty-cart"
+                                    >
+                                        No medicines added to cart.
+                                    </td>
+
+                                </tr>
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                </div>
+
+
+                <!-- =================================================
+                     BILL SUMMARY
+                     ================================================= -->
+
+                <div class="billing-card">
+
+                    <h5 class="mb-3">
+                        Bill Summary
+                    </h5>
+
+
+                    <!-- DISCOUNT -->
+
+                    <div class="mb-3">
+
+                        <label
+                            for="discount"
+                            class="form-label"
+                        >
+                            Discount (₹)
+                        </label>
+
+                        <input
+                            type="number"
+                            id="discount"
+                            name="discount"
+                            class="form-control"
+                            value="0"
+                            min="0"
+                            step="0.01"
+                        >
+
+                    </div>
+
+
+                    <!-- SUBTOTAL -->
+
+                    <div class="summary-row">
+
+                        <span>
+                            Subtotal
+                        </span>
+
+                        <strong>
+                            ₹<span id="subtotal">0.00</span>
+                        </strong>
+
+                    </div>
+
+
+                    <!-- DISCOUNT DISPLAY -->
+
+                    <div class="summary-row">
+
+                        <span>
+                            Discount
+                        </span>
+
+                        <strong>
+                            ₹<span id="displayDiscount">0.00</span>
+                        </strong>
+
+                    </div>
+
+
+                    <!-- GST -->
+
+                    <div class="summary-row">
+
+                        <span>
+                            GST (18%)
+                        </span>
+
+                        <strong>
+                            ₹<span id="displayTax">0.00</span>
+                        </strong>
+
+                    </div>
+
+
+                    <hr>
+
+
+                    <!-- GRAND TOTAL -->
+
+                    <div class="summary-row grand-total">
+
+                        <span>
+                            Grand Total
+                        </span>
+
+                        <span>
+                            ₹<span id="grandTotal">0.00</span>
+                        </span>
+
+                    </div>
+
+
+                    <!-- PAYMENT METHOD -->
+
+                    <div class="mt-4">
+
+                        <label
+                            for="payment_method"
+                            class="form-label"
+                        >
+                            Payment Method
+                        </label>
+
+                        <select
+                            id="payment_method"
+                            name="payment_method"
+                            class="form-select"
+                        >
+
+                            <option value="Cash">
+                                Cash
+                            </option>
+
+                            <option value="UPI">
+                                UPI
+                            </option>
+
+                            <option value="Card">
+                                Card
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+                    <!-- PRESCRIPTION -->
+
+                    <div class="mt-3">
+
+                        <label
+                            for="prescription"
+                            class="form-label"
+                        >
+                            Prescription Notes
+                        </label>
+
+                        <textarea
+                            id="prescription"
+                            class="form-control"
+                            rows="3"
+                            placeholder="Optional prescription notes"
+                        ></textarea>
+
+
+                        <input
+                            type="hidden"
+                            id="prescription_notes"
+                            name="prescription_notes"
+                        >
+
+                    </div>
+
+
+                    <!-- HIDDEN GST -->
+
+                    <input
+                        type="hidden"
+                        id="tax"
+                        name="tax"
+                        value="0"
+                    >
+
+
+                    <!-- HIDDEN CART -->
+
+                    <input
+                        type="hidden"
+                        id="cart_items"
+                        name="cart_items"
+                        value="[]"
+                    >
+
+
+                    <!-- GENERATE BILL -->
+
+                    <button
+                        type="submit"
+                        class="btn btn-success btn-lg w-100 mt-4"
+                        id="submitBill"
+                    >
+                        Generate Bill
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </form>
+
+</div>
+
+
+<!--
+=============================================================
+IMPORTANT:
+Only load the external billing JavaScript.
+Do NOT put another <script> block here.
+=============================================================
+-->
+
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+
 {% endblock %}

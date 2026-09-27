@@ -1,59 +1,352 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
     <meta charset="UTF-8">
+
     <title>Medicine Report</title>
+
     <style>
-        /* Basic styles for the PDF */
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
+
+        @page {
+            size: A4;
+            margin: 15mm;
         }
-        h1 {
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 0;
+            padding: 0;
+            color: #222;
+            font-size: 12px;
+        }
+
+
+        /* ==============================
+           HEADER
+           ============================== */
+
+        .report-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .report-header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .report-header p {
+            margin: 5px 0 0;
+            color: #666;
+            font-size: 11px;
+        }
+
+
+        /* ==============================
+           SUMMARY
+           ============================== */
+
+        .summary {
+            width: 100%;
+            margin-bottom: 15px;
+        }
+
+        .summary-box {
+            border: 1px solid #ccc;
+            padding: 8px;
             text-align: center;
         }
+
+
+        /* ==============================
+           TABLE
+           ============================== */
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
+            margin-top: 10px;
         }
-        th, td {
-            border: 1px solid #000;
-            padding: 8px;
+
+
+        th,
+        td {
+            border: 1px solid #333;
+            padding: 7px;
             text-align: left;
+            vertical-align: middle;
         }
+
+
         th {
-            background-color: #f2f2f2;
+            background-color: #e9ecef;
+            font-weight: bold;
+            text-align: center;
         }
+
+
+        td.center {
+            text-align: center;
+        }
+
+
+        td.price {
+            text-align: right;
+        }
+
+
+        /* ==============================
+           STOCK STATUS
+           ============================== */
+
+        .stock-good {
+            color: #198754;
+            font-weight: bold;
+        }
+
+        .stock-low {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+
+        /* ==============================
+           EXPIRY STATUS
+           ============================== */
+
+        .expired {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .safe {
+            color: #198754;
+        }
+
+
+        /* ==============================
+           FOOTER
+           ============================== */
+
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 10px;
+            color: #777;
+        }
+
     </style>
+
 </head>
+
+
 <body>
-    <h1>Medicine Report</h1>
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Category</th>
-                <th>Batch Number</th>
-                <th>Quantity</th>
-                <th>Price</th>
-                <th>Expiry Date</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for medicine in medicines %}
-            <tr>
-                <td>{{ medicine.id }}</td>
-                <td>{{ medicine.name }}</td>
-                <td>{{ medicine.category }}</td>
-                <td>{{ medicine.batch_number }}</td>
-                <td>{{ medicine.quantity }}</td>
-                <td>₹{{ "%.2f"|format(medicine.price) }}</td>
-                <td>{{ medicine.expiry_date.strftime('%d-%m-%Y') }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
+
+
+    <!-- ==========================================
+         REPORT HEADER
+         ========================================== -->
+
+    <div class="report-header">
+
+        <h1>Medicine Report</h1>
+
+        <p>
+            Medical Shop Medicine Inventory
+        </p>
+
+        <p>
+            Generated on:
+            {{ current_date.strftime('%d-%m-%Y') if current_date else '' }}
+        </p>
+
+    </div>
+
+
+    <!-- ==========================================
+         SUMMARY
+         ========================================== -->
+
+    <table class="summary">
+
+        <tr>
+
+            <td class="summary-box">
+
+                <strong>
+                    Total Medicines
+                </strong>
+
+                <br>
+
+                {{ medicines|length }}
+
+            </td>
+
+        </tr>
+
     </table>
+
+
+    <!-- ==========================================
+         MEDICINE TABLE
+         ========================================== -->
+
+    <table>
+
+        <thead>
+
+            <tr>
+
+                <th>ID</th>
+
+                <th>Medicine Name</th>
+
+                <th>Category</th>
+
+                <th>Batch Number</th>
+
+                <th>Quantity</th>
+
+                <th>Price</th>
+
+                <th>MFG Date</th>
+
+                <th>Expiry Date</th>
+
+            </tr>
+
+        </thead>
+
+
+        <tbody>
+
+            {% for medicine in medicines %}
+
+            <tr>
+
+                <!-- ID -->
+                <td class="center">
+                    {{ medicine.id }}
+                </td>
+
+
+                <!-- Name -->
+                <td>
+                    {{ medicine.name }}
+                </td>
+
+
+                <!-- Category -->
+                <td>
+                    {{ medicine.category }}
+                </td>
+
+
+                <!-- Batch Number -->
+                <td>
+                    {{ medicine.batch_number }}
+                </td>
+
+
+                <!-- Quantity -->
+                <td class="center">
+
+                    {% if medicine.quantity > 0 %}
+
+                        <span class="stock-good">
+                            {{ medicine.quantity }}
+                        </span>
+
+                    {% else %}
+
+                        <span class="stock-low">
+                            0
+                        </span>
+
+                    {% endif %}
+
+                </td>
+
+
+                <!-- Price -->
+                <td class="price">
+
+                    ₹{{ "%.2f"|format(medicine.price|float) }}
+
+                </td>
+
+
+                <!-- MFG Date -->
+                <td class="center">
+
+                    {% if medicine.mfg_date %}
+
+                        {{ medicine.mfg_date.strftime('%d-%m-%Y') }}
+
+                    {% else %}
+
+                        N/A
+
+                    {% endif %}
+
+                </td>
+
+
+                <!-- Expiry Date -->
+                <td class="center">
+
+                    {% if medicine.expiry_date %}
+
+                        {{ medicine.expiry_date.strftime('%d-%m-%Y') }}
+
+                    {% else %}
+
+                        N/A
+
+                    {% endif %}
+
+                </td>
+
+            </tr>
+
+            {% else %}
+
+            <tr>
+
+                <td
+                    colspan="8"
+                    style="text-align: center; padding: 20px;"
+                >
+
+                    No medicines found.
+
+                </td>
+
+            </tr>
+
+            {% endfor %}
+
+        </tbody>
+
+    </table>
+
+
+    <!-- ==========================================
+         FOOTER
+         ========================================== -->
+
+    <div class="footer">
+
+        <p>
+            This is a computer-generated medicine inventory report.
+        </p>
+
+    </div>
+
+
 </body>
+
 </html>
