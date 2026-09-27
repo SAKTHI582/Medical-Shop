@@ -2,9 +2,13 @@ name: Medical Shop CI-CD
 
 on:
   push:
-    branches: ["main"]
+    branches:
+      - main
+
   pull_request:
-    branches: ["main"]
+    branches:
+      - main
+
   workflow_dispatch:
 
 env:
@@ -14,29 +18,56 @@ permissions:
   contents: read
 
 jobs:
+
+  # ============================================================
+  # 1. VALIDATE
+  # ============================================================
   validate:
     name: Validate Python, Maven and Kubernetes manifests
     runs-on: ubuntu-latest
+
     steps:
+
       - name: Checkout
         uses: actions/checkout@v4
 
+      # --------------------------------------------------------
+      # Native libraries required by Flask-WeasyPrint / MySQL
+      # --------------------------------------------------------
       - name: Install native build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config default-libmysqlclient-dev libcairo2 libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf-2.0-0 libffi-dev shared-mime-info
+          sudo apt-get install -y \
+            build-essential \
+            pkg-config \
+            default-libmysqlclient-dev \
+            libcairo2 \
+            libpango-1.0-0 \
+            libpangocairo-1.0-0 \
+            libgdk-pixbuf-2.0-0 \
+            libffi-dev \
+            shared-mime-info
 
+      # --------------------------------------------------------
+      # Python
+      # --------------------------------------------------------
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
       - name: Install Python dependencies
-        run: pip install -r requirements.txt
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
       - name: Python compile check
-        run: python -m compileall -q .
+        run: |
+          python -m compileall -q .
 
+      # --------------------------------------------------------
+      # Java / Maven
+      # --------------------------------------------------------
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
@@ -45,26 +76,60 @@ jobs:
           cache: maven
 
       - name: Maven validate/package
-        run: mvn -B package
+        run: |
+          mvn -B clean package
+
+      # --------------------------------------------------------
+      # Kubernetes YAML validation
+      # --------------------------------------------------------
+      - name: Install YAML validator
+        run: |
+          python -m pip install pyyaml
 
       - name: Validate Kubernetes YAML
         run: |
-          python -m pip install pyyaml
           python - <<'PY'
           import glob
           import yaml
-          for path in glob.glob('k8s/*.yml') + glob.glob('monitering/**/*.yml', recursive=True):
-              with open(path, encoding='utf-8') as f:
+          import sys
+
+          patterns = [
+              "k8s/*.yml",
+              "k8s/*.yaml",
+              "monitering/**/*.yml",
+              "monitering/**/*.yaml"
+          ]
+
+          files = []
+
+          for pattern in patterns:
+              files.extend(glob.glob(pattern, recursive=True))
+
+          if not files:
+              print("No Kubernetes YAML files found.")
+              sys.exit(1)
+
+          for path in sorted(set(files)):
+              with open(path, encoding="utf-8") as f:
                   list(yaml.safe_load_all(f))
-              print('OK:', path)
+
+              print(f"OK: {path}")
           PY
 
+
+  # ============================================================
+  # 2. DOCKER BUILD + PUSH
+  # ============================================================
   docker:
     name: Build and push Docker image
     needs: validate
+
     if: github.event_name != 'pull_request'
+
     runs-on: ubuntu-latest
+
     steps:
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -77,34 +142,59 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      # --------------------------------------------------------
+      # Generate Docker tags
+      # --------------------------------------------------------
       - name: Docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.IMAGE_NAME }}
           tags: |
-            type=sha
+            type=sha,format=short,prefix=sha-
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build and push
+      # --------------------------------------------------------
+      # Build + Push
+      # --------------------------------------------------------
+      - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+
+          tags: |
+            ${{ steps.meta.outputs.tags }}
+
+          labels: |
+            ${{ steps.meta.outputs.labels }}
+
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+
+  # ============================================================
+  # 3. DEPLOY TO AWS EKS
+  # ============================================================
   deploy:
     name: Deploy to EKS
+
     needs: docker
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    if: >
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main'
+
     runs-on: ubuntu-latest
+
     steps:
+
       - name: Checkout
         uses: actions/checkout@v4
 
+      # --------------------------------------------------------
+      # AWS authentication
+      # --------------------------------------------------------
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -112,37 +202,108 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Configure kubectl for EKS
-        run: aws eks update-kubeconfig --region "${AWS_REGION}" --name "${EKS_CLUSTER_NAME}"
+      # --------------------------------------------------------
+      # Check AWS identity
+      # --------------------------------------------------------
+      - name: Verify AWS identity
+        run: |
+          aws sts get-caller-identity
+
+      # --------------------------------------------------------
+      # Check EKS cluster before configuring kubectl
+      # --------------------------------------------------------
+      - name: Verify EKS cluster
         env:
           AWS_REGION: ${{ secrets.AWS_REGION }}
           EKS_CLUSTER_NAME: ${{ secrets.EKS_CLUSTER_NAME }}
+        run: |
+          echo "AWS Region: ${AWS_REGION}"
+          echo "EKS Cluster: ${EKS_CLUSTER_NAME}"
 
+          aws eks describe-cluster \
+            --region "${AWS_REGION}" \
+            --name "${EKS_CLUSTER_NAME}" \
+            --query 'cluster.{name:name,status:status,version:version,region:arn}' \
+            --output table
+
+      # --------------------------------------------------------
+      # Configure kubectl
+      # --------------------------------------------------------
+      - name: Configure kubectl for EKS
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          EKS_CLUSTER_NAME: ${{ secrets.EKS_CLUSTER_NAME }}
+        run: |
+          aws eks update-kubeconfig \
+            --region "${AWS_REGION}" \
+            --name "${EKS_CLUSTER_NAME}"
+
+      # --------------------------------------------------------
+      # Verify Kubernetes access
+      # --------------------------------------------------------
+      - name: Verify Kubernetes connection
+        run: |
+          kubectl cluster-info
+          kubectl get nodes
+
+      # --------------------------------------------------------
+      # Create namespace
+      # --------------------------------------------------------
       - name: Create namespace
-        run: kubectl apply -f k8s/namespace.yml
-
-      - name: Create/update secrets
         run: |
-          kubectl -n medical-shop create secret generic medical-shop-secret --dry-run=client -o yaml \
-            --from-literal=MYSQL_PASSWORD='${{ secrets.MYSQL_PASSWORD }}' \
-            --from-literal=SECRET_KEY='${{ secrets.SECRET_KEY }}' \
-            --from-literal=MAIL_USERNAME='${{ secrets.MAIL_USERNAME }}' \
-            --from-literal=MAIL_PASSWORD='${{ secrets.MAIL_PASSWORD }}' \
-            --from-literal=MAIL_RECIPIENTS='${{ secrets.MAIL_RECIPIENTS }}' \
-            | kubectl apply -f -
-          kubectl -n medical-shop create secret generic mysql-secret --dry-run=client -o yaml \
-            --from-literal=MYSQL_ROOT_PASSWORD='${{ secrets.MYSQL_PASSWORD }}' \
+          kubectl apply -f k8s/namespace.yml
+
+      # --------------------------------------------------------
+      # Application secrets
+      # --------------------------------------------------------
+      - name: Create or update application secrets
+        env:
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+          MAIL_RECIPIENTS: ${{ secrets.MAIL_RECIPIENTS }}
+        run: |
+          kubectl -n medical-shop create secret generic medical-shop-secret \
+            --dry-run=client \
+            -o yaml \
+            --from-literal=MYSQL_PASSWORD="${MYSQL_PASSWORD}" \
+            --from-literal=SECRET_KEY="${SECRET_KEY}" \
+            --from-literal=MAIL_USERNAME="${MAIL_USERNAME}" \
+            --from-literal=MAIL_PASSWORD="${MAIL_PASSWORD}" \
+            --from-literal=MAIL_RECIPIENTS="${MAIL_RECIPIENTS}" \
             | kubectl apply -f -
 
-      - name: Create/update Grafana secret
+      # --------------------------------------------------------
+      # MySQL secret
+      # --------------------------------------------------------
+      - name: Create or update MySQL secret
+        env:
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
         run: |
-          kubectl -n medical-shop create secret generic grafana-secret --dry-run=client -o yaml \
-            --from-literal=admin-password='Sakthi@582' \
+          kubectl -n medical-shop create secret generic mysql-secret \
+            --dry-run=client \
+            -o yaml \
+            --from-literal=MYSQL_ROOT_PASSWORD="${MYSQL_PASSWORD}" \
             | kubectl apply -f -
+
+      # --------------------------------------------------------
+      # Grafana secret
+      # --------------------------------------------------------
+      - name: Create or update Grafana secret
         env:
           GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
+        run: |
+          kubectl -n medical-shop create secret generic grafana-secret \
+            --dry-run=client \
+            -o yaml \
+            --from-literal=admin-password="${GRAFANA_ADMIN_PASSWORD}" \
+            | kubectl apply -f -
 
-      - name: Apply manifests
+      # --------------------------------------------------------
+      # Apply application manifests
+      # --------------------------------------------------------
+      - name: Apply application manifests
         run: |
           kubectl apply -f k8s/configmap.yml
           kubectl apply -f k8s/mysql-init-configmap.yml
@@ -151,23 +312,78 @@ jobs:
           kubectl apply -f k8s/deployment.yml
           kubectl apply -f k8s/ingress.yml
           kubectl apply -f k8s/expiry-cronjob.yml
+
+      # --------------------------------------------------------
+      # Apply monitoring manifests
+      # --------------------------------------------------------
+      - name: Apply monitoring manifests
+        run: |
           kubectl apply -f monitering/prometheus.yml
           kubectl apply -f monitering/prometheus-rbac.yml
           kubectl apply -f monitering/prometheus-deployment.yml
           kubectl apply -f monitering/prometheus-service.yml
+
           kubectl apply -f monitering/grafana/configmap.yml
           kubectl apply -f monitering/grafana/deployment.yml
           kubectl apply -f monitering/grafana/service.yml
           kubectl apply -f monitering/grafana/ingress.yml
 
+      # --------------------------------------------------------
+      # Update application image
+      # --------------------------------------------------------
       - name: Update application image
-        run: |
-          IMAGE_TAG="${IMAGE_NAME}:sha-${GITHUB_SHA::7}"
-          kubectl -n medical-shop set image deployment/medical-shop-app medical-shop="$IMAGE_TAG"
-          kubectl -n medical-shop set image cronjob/medical-shop-expiry-alert expiry-alert="$IMAGE_TAG"
-          kubectl -n medical-shop rollout status deployment/medical-shop-app --timeout=180s
         env:
           IMAGE_NAME: ${{ env.IMAGE_NAME }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          IMAGE_TAG="${IMAGE_NAME}:sha-${GITHUB_SHA:0:7}"
 
+          echo "Deploying image:"
+          echo "${IMAGE_TAG}"
+
+          kubectl -n medical-shop set image \
+            deployment/medical-shop-app \
+            medical-shop="${IMAGE_TAG}"
+
+      # --------------------------------------------------------
+      # Update expiry alert CronJob image
+      # --------------------------------------------------------
+      - name: Update expiry alert image
+        env:
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          IMAGE_TAG="${IMAGE_NAME}:sha-${GITHUB_SHA:0:7}"
+
+          kubectl -n medical-shop set image \
+            cronjob/medical-shop-expiry-alert \
+            expiry-alert="${IMAGE_TAG}"
+
+      # --------------------------------------------------------
+      # Wait for application rollout
+      # --------------------------------------------------------
+      - name: Wait for application rollout
+        run: |
+          kubectl -n medical-shop rollout status \
+            deployment/medical-shop-app \
+            --timeout=300s
+
+      # --------------------------------------------------------
+      # Show deployment status
+      # --------------------------------------------------------
       - name: Show deployment
-        run: kubectl -n medical-shop get pods,svc,ingress
+        run: |
+          echo "===== PODS ====="
+          kubectl -n medical-shop get pods -o wide
+
+          echo "===== SERVICES ====="
+          kubectl -n medical-shop get svc
+
+          echo "===== INGRESS ====="
+          kubectl -n medical-shop get ingress
+
+          echo "===== DEPLOYMENT ====="
+          kubectl -n medical-shop get deployment
+
+          echo "===== CRONJOB ====="
+          kubectl -n medical-shop get cronjob
